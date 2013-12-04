@@ -59,7 +59,6 @@
 						nsPublish.attachCamera(null);
 						nsPublish.publish(myName,"live");
 						playFriend("user1");
-						uRAlone.visible = true;
 						isPublishing = true;
 						break;
 				
@@ -75,7 +74,7 @@
 						{
 							myName = "user1";
 							nsPublish.attachAudio(myMic);
-							nsPublish.attachCamera(myCam);	
+							nsPublish.attachCamera(myCam);
 							nsPublish.publish(myName,"live");
 							playFriend("user2");
 							uRAlone.visible = false;
@@ -87,10 +86,19 @@
 			private function playFriend(name:String):void
 			{
 				var in_ns:NetStream = new NetStream(nc);
+				in_ns.addEventListener(NetStatusEvent.NET_STATUS, nsFall);
 				in_ns.play(name);
 				var vid:Video = new Video();
 				videoDisplay2.addChild(vid);
 				vid.attachNetStream(in_ns);
+			}
+			
+			private function nsFall(e:NetStatusEvent):void
+			{
+				if(e.info.code == "NetStream.Play.StreamNotFound")
+				{
+					uRAlone.visible = true;					
+				}
 			}
 			
 		]]>
@@ -98,7 +106,7 @@
 	<mx:VBox x="15" y="15" height="100%" styleName="div">
 		<mx:VideoDisplay id="videoDisplay" width="320" height="240"
 						 creationComplete="startCam(); doConneсt();"/>
-		<s:Label id="uRAlone" text="Waiting for your friend" visible="false"/>
+		<s:Label id="uRAlone" visible="true" text="Waiting for your friend"/>
 	</mx:VBox>
 	<mx:VBox x="350" y="15" height="100%" styleName="div">
 		<mx:VideoDisplay id="videoDisplay2" width="320" height="240"/>
