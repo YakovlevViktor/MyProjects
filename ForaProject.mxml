@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   minWidth="955" minHeight="600">
+	<fx:Script>
+		<![CDATA[
+			private var server:String = "rtmp://192.168.1.97:1935/foraProject";	//my server's location
+			private var isPublishing:Boolean = false;
+			private var nc:NetConnection;
+			private var nsPublish:NetStream;
+			private var myCam:Camera = Camera.getCamera();
+			private var myMic:Microphone = Microphone.getMicrophone();
+			private var _so:SharedObject;	//amount of users connected to the WOWZA server
+			
+			private function startCam():void
+			{
+				myCam.setMode(320, 240, 12, false);
+				var myVid:Video = new Video();
+				videoDisplay.addChild(myVid);
+				myVid.attachCamera(myCam);
+			}
+			private function doConneсt():void
+			{
+				nc = new NetConnection();
+				nc.client = this;
+				nc.addEventListener(NetStatusEvent.NET_STATUS, onNetStatus);
+				nc.connect(server);
+			}
+			
+			private function onNetStatus(e:NetStatusEvent):void
+			{
+				switch(e.info.code)
+				{
+					case "NetConnection.Connect.Success":
+						
+						nsPublish = new NetStream(nc);
+						nsPublish.attachAudio(myMic);
+						nsPublish.attachCamera(myCam);
+						getSO();
+				}
+			}
+			private function getSO():void
+			{
+			_so = SharedObject.getRemote("numberOfUsers", nc.uri, false);
+			_so.addEventListener(SyncEvent.SYNC, onSync);
+			_so.client = this;
+			_so.connect(nc);
+			}
+			
+			private function onSync(e:SyncEvent):void
+			{
+				var myName:String = "";
+				switch(_so.data.value)
+				{
+					case 1:				
+						myName = "user1";
+						nsPublish.attachAudio(null);
+						nsPublish.attachCamera(null);
+						nsPublish.publish(myName,"live");
+						playFriend("user1");
+						uRAlone.visible = true;
+						isPublishing = true;
+						break;
+				
+					case 2:
+						if(!isPublishing)
+						{
+							myName = "user2";
+							nsPublish.publish(myName, "live");
+							playFriend("user1");
+							uRAlone.visible = false;	
+						}
+						else
+						{
+							myName = "user1";
+							nsPublish.attachAudio(myMic);
+							nsPublish.attachCamera(myCam);	
+							nsPublish.publish(myName,"live");
+							playFriend("user2");
+							uRAlone.visible = false;
+						}
+						break;
+				}
+			}
+			
+			private function playFriend(name:String):void
+			{
+				var in_ns:NetStream = new NetStream(nc);
+				in_ns.play(name);
+				var vid:Video = new Video();
+				videoDisplay2.addChild(vid);
+				vid.attachNetStream(in_ns);
+			}
+			
+		]]>
+	</fx:Script>
+	<mx:VBox x="15" y="15" height="100%" styleName="div">
+		<mx:VideoDisplay id="videoDisplay" width="320" height="240"
+						 creationComplete="startCam(); doConneсt();"/>
+		<s:Label id="uRAlone" text="Waiting for your friend" visible="false"/>
+	</mx:VBox>
+	<mx:VBox x="350" y="15" height="100%" styleName="div">
+		<mx:VideoDisplay id="videoDisplay2" width="320" height="240"/>
+	</mx:VBox>
+</s:Application>
